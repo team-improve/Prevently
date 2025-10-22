@@ -26,7 +26,7 @@ export default function Landing() {
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen text-center">
-      <h1 className="text-3xl font-bold mb-4">Market Vibe</h1>
+      <h1 className="text-3xl font-bold mb-4">Predictly</h1>
       <p className="text-gray-600 mb-8">AI-powered daily market sentiment.</p>
       <button onClick={login} className="bg-black text-white px-6 py-3 rounded-xl">
         Login with Google

@@ -1,6 +1,6 @@
 import "@/app/ui/global.css";
 import { inter } from "@/app/ui/fonts";
-import Link from "next/link";
+import Navbar from "@/app/ui/NavBar";
 
 export const metadata = {
   title: "Prevently Dashboard",
@@ -14,22 +14,11 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className={`${inter.className} antialiased`}>
-        {/* Simple Navbar */}
-        <nav className="flex gap-6 p-4 border-b bg-white shadow-sm">
-          <Link href="/" className="hover:underline font-medium">
-            Home
-          </Link>
-          <Link href="/dashboard" className="hover:underline font-medium">
-            Dashboard
-          </Link>
-          <Link href="/companies" className="hover:underline font-medium">
-            Companies
-          </Link>
-        </nav>
-
-        {/* Page content */}
-        <main className="min-h-screen">{children}</main>
+      <body
+        className={`${inter.className} antialiased bg-gray-50 text-gray-900 flex flex-col min-h-screen`}
+      >
+        <Navbar />
+        <div className="pt-12 flex-1">{children}</div>
       </body>
     </html>
   );
