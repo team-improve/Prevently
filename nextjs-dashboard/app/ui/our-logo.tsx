@@ -7,7 +7,9 @@ export default function OurLogo() {
       className={`${lusitana.className} flex flex-row items-center leading-none text-white`}
     >
       <Image
+      
         src="/finance_mode_90dp_FFFFFF.png"
+        className="h-12 w-12"
         width={500}
         height={500}
         alt=":D"
