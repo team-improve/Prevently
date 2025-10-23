@@ -39,14 +39,22 @@ export class GoogleAuth {
 
   private initGoogleAuth(clientId: string, resolve: () => void, reject: (error: any) => void): void {
     try {
-      window.google.accounts.id.initialize({
-        client_id: clientId,
-        callback: this.handleCredentialResponse.bind(this),
-        auto_select: false,
-        cancel_on_tap_outside: true,
-      });
-      this.isInitialized = true;
-      resolve();
+      const checkGoogle = () => {
+        if (window.google && window.google.accounts && window.google.accounts.id) {
+          window.google.accounts.id.initialize({
+            client_id: clientId,
+            callback: this.handleCredentialResponse.bind(this),
+            auto_select: false,
+            cancel_on_tap_outside: true,
+          });
+          this.isInitialized = true;
+          resolve();
+        } else {
+          setTimeout(checkGoogle, 100);
+        }
+      };
+
+      checkGoogle();
     } catch (error) {
       reject(error);
     }
@@ -79,6 +87,10 @@ export class GoogleAuth {
   async signIn(): Promise<void> {
     if (!this.isInitialized) {
       throw new Error('Google Auth not initialized. Call initialize() first.');
+    }
+
+    if (!window.google || !window.google.accounts || !window.google.accounts.id) {
+      throw new Error('Google Identity Services not loaded');
     }
 
     return new Promise((resolve) => {

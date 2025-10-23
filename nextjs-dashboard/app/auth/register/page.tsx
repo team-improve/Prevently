@@ -3,19 +3,24 @@
 import { lusitana } from '@/app/ui/fonts';
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useEmailValidation } from '@/app/hooks/useEmailValidation';
 import { usePasswordValidation } from '@/app/hooks/usePasswordValidation';
+import { useUsernameValidation } from '@/app/hooks/useUsernameValidation';
 import { authApi, authStorage } from '@/lib/auth-api';
 import { googleAuth } from '@/lib/google-auth';
+import AuthGuard from '@/components/AuthGuard';
 
-export default function RegisterPage() {
+function RegisterContent() {
   const emailValidation = useEmailValidation();
   const passwordValidation = usePasswordValidation();
+  const usernameValidation = useUsernameValidation();
   const [confirmPassword, setConfirmPassword] = useState('');
   const [errors, setErrors] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
+  const router = useRouter();
 
   useEffect(() => {
     const initGoogleAuth = async () => {
@@ -32,6 +37,17 @@ export default function RegisterPage() {
       setGoogleLoading(false);
       setSuccess(true);
       setErrors([]);
+
+      if (event.detail.idToken) {
+        authStorage.setToken(event.detail.idToken);
+      }
+      if (event.detail.refreshToken) {
+        authStorage.setRefreshToken(event.detail.refreshToken);
+      }
+
+      setTimeout(() => {
+        router.push('/');
+      }, 1000);
     };
 
     const handleGoogleError = (event: any) => {
@@ -56,6 +72,10 @@ export default function RegisterPage() {
       newErrors.push('Please enter a valid email address');
     }
 
+    if (!usernameValidation.validateUsername()) {
+      newErrors.push('Please enter a valid username');
+    }
+
     if (!passwordValidation.isValid) {
       newErrors.push('Password does not meet all requirements');
     }
@@ -69,10 +89,14 @@ export default function RegisterPage() {
     if (newErrors.length === 0) {
       setIsLoading(true);
       try {
-        const response = await authApi.register(emailValidation.email, passwordValidation.password);
+        const response = await authApi.register(emailValidation.email, passwordValidation.password, usernameValidation.username);
 
         setSuccess(true);
         setErrors([]);
+
+        setTimeout(() => {
+          router.push('/auth/login?registered=true');
+        }, 3000);
       } catch (error) {
         if (error instanceof Error) {
           setErrors([error.message]);
@@ -132,11 +156,22 @@ export default function RegisterPage() {
               {emailValidation.email && emailValidation.isValid === false && (
                 <p className="mt-1 text-sm text-red-600">Please enter a valid email address</p>
               )}
-              {emailValidation.email && emailValidation.isValid === true && (
-                <p className="mt-1 text-sm text-green-600 flex items-center">
-                  <span className="mr-1">✓</span>
-                  Valid email format
-                </p>
+            </div>
+            <div>
+              <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-2">
+                Username
+              </label>
+              <input
+                type="text"
+                id="username"
+                value={usernameValidation.username}
+                onChange={(e) => usernameValidation.setUsername(e.target.value)}
+                required
+                className={usernameValidation.inputClassName}
+                placeholder="Choose a username"
+              />
+              {usernameValidation.username && usernameValidation.isValid === false && (
+                <p className="mt-1 text-sm text-red-600">{usernameValidation.errorMessage}</p>
               )}
             </div>
             <div>
@@ -237,16 +272,16 @@ export default function RegisterPage() {
                   <svg className="w-5 h-5 text-green-400 mr-2" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                   </svg>
-                  <p className="text-sm text-green-700">Registration successful! Please check your email to verify your account before signing in.</p>
+                  <p className="text-sm text-green-700">Registration successful! Please check your email to verify your account. Redirecting to login...</p>
                 </div>
               </div>
             )}
 
             <button
               type="submit"
-              disabled={isLoading || !passwordValidation.isValid || !passwordsMatch || !emailValidation.email || emailValidation.isValid !== true}
+              disabled={isLoading || !passwordValidation.isValid || !passwordsMatch || !emailValidation.email || emailValidation.isValid !== true || !usernameValidation.username || usernameValidation.isValid !== true}
               className={`w-full py-3 px-4 rounded-lg font-semibold transition-all duration-200 shadow-lg transform ${
-                passwordValidation.isValid && passwordsMatch && emailValidation.email && emailValidation.isValid === true && !isLoading
+                passwordValidation.isValid && passwordsMatch && emailValidation.email && emailValidation.isValid === true && usernameValidation.username && usernameValidation.isValid === true && !isLoading
                   ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white hover:from-purple-700 hover:to-pink-700 hover:shadow-xl hover:-translate-y-0.5'
                   : 'bg-gray-300 text-gray-500 cursor-not-allowed'
               }`}
@@ -308,5 +343,13 @@ export default function RegisterPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function RegisterPage() {
+  return (
+    <AuthGuard>
+      <RegisterContent />
+    </AuthGuard>
   );
 }

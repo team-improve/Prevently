@@ -5,8 +5,9 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useEmailValidation } from '@/app/hooks/useEmailValidation';
 import { authApi } from '@/lib/auth-api';
+import AuthGuard from '@/components/AuthGuard';
 
-export default function ForgotPasswordPage() {
+function ForgotPasswordContent() {
   const emailValidation = useEmailValidation();
   const [submitted, setSubmitted] = useState(false);
   const [errors, setErrors] = useState<string[]>([]);
@@ -140,5 +141,13 @@ export default function ForgotPasswordPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function ForgotPasswordPage() {
+  return (
+    <AuthGuard>
+      <ForgotPasswordContent />
+    </AuthGuard>
   );
 }

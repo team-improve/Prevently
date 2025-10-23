@@ -1,14 +1,15 @@
 'use client';
 
 import { lusitana } from '@/app/ui/fonts';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useEmailValidation } from '@/app/hooks/useEmailValidation';
 import { authApi, authStorage } from '@/lib/auth-api';
 import { googleAuth } from '@/lib/google-auth';
+import AuthGuard from '@/components/AuthGuard';
 
-export default function LoginPage() {
+function LoginContent() {
   const emailValidation = useEmailValidation();
   const [password, setPassword] = useState('');
   const [errors, setErrors] = useState<string[]>([]);
@@ -16,15 +17,21 @@ export default function LoginPage() {
   const [success, setSuccess] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const searchParams = useSearchParams();
+  const router = useRouter();
   const [showVerifiedMessage, setShowVerifiedMessage] = useState(false);
   const [showResendVerification, setShowResendVerification] = useState(false);
   const [resendLoading, setResendLoading] = useState(false);
   const [showResendSuccess, setShowResendSuccess] = useState(false);
+  const [showRegisteredMessage, setShowRegisteredMessage] = useState(false);
 
   useEffect(() => {
     if (searchParams.get('verified') === 'true') {
       setShowVerifiedMessage(true);
       setTimeout(() => setShowVerifiedMessage(false), 5000);
+    }
+    if (searchParams.get('registered') === 'true') {
+      setShowRegisteredMessage(true);
+      setTimeout(() => setShowRegisteredMessage(false), 5000);
     }
   }, [searchParams]);
 
@@ -51,7 +58,9 @@ export default function LoginPage() {
         authStorage.setRefreshToken(event.detail.refreshToken);
       }
 
-      // TODO: Redirect to dashboard
+      setTimeout(() => {
+        router.push('/');
+      }, 1000);
     };
 
     const handleGoogleError = (event: any) => {
@@ -70,7 +79,9 @@ export default function LoginPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!emailValidation.validateEmail()) {
+    
+    if (!emailValidation.email.trim()) {
+      setErrors(['Please enter your email or username']);
       return;
     }
 
@@ -87,7 +98,9 @@ export default function LoginPage() {
 
       setSuccess(true);
       setErrors([]);
-      // TODO: Redirect to dashboard or home page
+      setTimeout(() => {
+        router.push('/');
+      }, 1000);
     } catch (error) {
       if (error instanceof Error) {
         if (error.message.includes('Email not verified')) {
@@ -149,27 +162,18 @@ export default function LoginPage() {
         <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-8 shadow-xl border border-white/20">
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
-                Email Address
+              <label htmlFor="emailOrUsername" className="block text-sm font-medium text-gray-700 mb-2">
+                Email or Username
               </label>
               <input
-                type="email"
-                id="email"
+                type="text"
+                id="emailOrUsername"
                 value={emailValidation.email}
                 onChange={(e) => emailValidation.setEmail(e.target.value)}
                 required
-                className={`w-full px-4 py-3 border rounded-lg shadow-sm focus:outline-none focus:ring-2 transition-all duration-200 bg-white/50 backdrop-blur-sm ${
-                  emailValidation.email && emailValidation.isValid === false
-                    ? 'border-red-300 focus:ring-red-500 focus:border-red-500'
-                    : emailValidation.email && emailValidation.isValid === true
-                    ? 'border-green-300 focus:ring-green-500 focus:border-green-500'
-                    : 'border-gray-300 focus:ring-blue-500 focus:border-transparent'
-                }`}
-                placeholder="Enter your email"
+                className={`w-full px-4 py-3 border rounded-lg shadow-sm focus:outline-none focus:ring-2 transition-all duration-200 bg-white/50 backdrop-blur-sm border-gray-300 focus:ring-blue-500 focus:border-transparent`}
+                placeholder="Enter your email or username"
               />
-              {emailValidation.email && emailValidation.isValid === false && (
-                <p className="mt-1 text-sm text-red-600">Please enter a valid email address</p>
-              )}
             </div>
             <div>
               <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
@@ -202,6 +206,18 @@ export default function LoginPage() {
                     <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                   </svg>
                   <p className="text-sm text-green-700">Email verified successfully! You can now sign in.</p>
+                </div>
+              </div>
+            )}
+
+            {/* Registered Message */}
+            {showRegisteredMessage && (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <div className="flex items-center">
+                  <svg className="w-5 h-5 text-blue-400 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                  </svg>
+                  <p className="text-sm text-blue-700">Account created successfully! Please check your email to verify your account before signing in.</p>
                 </div>
               </div>
             )}
@@ -254,9 +270,9 @@ export default function LoginPage() {
 
             <button
               type="submit"
-              disabled={isLoading || !emailValidation.email || emailValidation.isValid !== true || !password}
+              disabled={isLoading || !emailValidation.email.trim() || !password}
               className={`w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-3 px-4 rounded-lg font-semibold hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 ${
-                emailValidation.email && emailValidation.isValid === true && password && !isLoading
+                emailValidation.email.trim() && password && !isLoading
                   ? ''
                   : 'opacity-50 cursor-not-allowed hover:transform-none'
               }`}
@@ -318,5 +334,29 @@ export default function LoginPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <AuthGuard>
+      <Suspense fallback={
+        <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-100 flex items-center justify-center p-4">
+          <div className="max-w-md w-full">
+            <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-8 shadow-xl border border-white/20 text-center">
+              <div className="inline-flex items-center justify-center w-12 h-12 bg-blue-100 rounded-full mb-4">
+                <svg className="animate-spin w-6 h-6 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+              </div>
+              <h2 className="text-xl font-semibold text-gray-900 mb-2">Loading...</h2>
+            </div>
+          </div>
+        </div>
+      }>
+        <LoginContent />
+      </Suspense>
+    </AuthGuard>
   );
 }

@@ -6,15 +6,54 @@ import json
 from typing import Optional
 from google.oauth2 import id_token
 from google.auth.transport import requests as google_requests
+import firebase_admin
+from firebase_admin import credentials, firestore
+import os
 
 router = APIRouter()
+
+if not firebase_admin._apps:
+    if Config.FIREBASE_SERVICE_ACCOUNT_KEY_PATH and os.path.exists(Config.FIREBASE_SERVICE_ACCOUNT_KEY_PATH):
+        cred = credentials.Certificate(Config.FIREBASE_SERVICE_ACCOUNT_KEY_PATH)
+    else:
+        cred = credentials.ApplicationDefault()
+    
+    firebase_admin.initialize_app(cred, {
+        'projectId': Config.FIREBASE_PROJECT_ID
+    })
+
+db = firestore.client()
+
+async def get_email_from_username(username: str) -> Optional[str]:
+    try:
+        doc_ref = db.collection('usernames').document(username.lower())
+        doc = doc_ref.get()
+        if doc.exists:
+            return doc.to_dict().get('email')
+        return None
+    except Exception as e:
+        print(f"Error getting email from username: {e}")
+        return None
+
+async def save_username_mapping(username: str, email: str):
+    try:
+        doc_ref = db.collection('usernames').document(username.lower())
+        doc_ref.set({
+            'email': email,
+            'username': username.lower(),
+            'created_at': firestore.SERVER_TIMESTAMP
+        })
+    except Exception as e:
+        print(f"Error saving username mapping: {e}")
+        raise HTTPException(status_code=500, detail="Failed to save user data")
 
 class RegisterRequest(BaseModel):
     email: str
     password: str
+    username: str
 
 class LoginRequest(BaseModel):
-    email: str
+    email_or_username: str
     password: str
 
 class ResetPasswordRequest(BaseModel):
@@ -35,6 +74,7 @@ async def register_user(request: RegisterRequest):
     payload = {
         "email": request.email,
         "password": request.password,
+        "displayName": request.username,
         "returnSecureToken": True
     }
     response = requests.post(url, json=payload)
@@ -43,6 +83,8 @@ async def register_user(request: RegisterRequest):
     
     user_data = response.json()
     id_token = user_data.get("idToken")
+    
+    await save_username_mapping(request.username, request.email)
     
     verify_url = f"https://identitytoolkit.googleapis.com/v1/accounts:sendOobCode?key={Config.FIREBASE_API_KEY}"
     verify_payload = {
@@ -77,7 +119,7 @@ async def verify_email(request: VerifyEmailRequest):
 async def resend_verification(request: LoginRequest):
     url = f"https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key={Config.FIREBASE_API_KEY}"
     payload = {
-        "email": request.email,
+        "email": request.email_or_username,
         "password": request.password,
         "returnSecureToken": True
     }
@@ -103,9 +145,18 @@ async def resend_verification(request: LoginRequest):
 
 @router.post("/login")
 async def login_user(request: LoginRequest):
+    email_to_use = request.email_or_username
+    
+    if '@' not in request.email_or_username:
+        email_from_username = await get_email_from_username(request.email_or_username)
+        if email_from_username:
+            email_to_use = email_from_username
+        else:
+            raise HTTPException(status_code=400, detail="Username not found")
+    
     url = f"https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key={Config.FIREBASE_API_KEY}"
     payload = {
-        "email": request.email,
+        "email": email_to_use,
         "password": request.password,
         "returnSecureToken": True
     }
@@ -156,12 +207,8 @@ async def logout_user(request: LogoutRequest):
         "grant_type": "refresh_token",
         "refresh_token": request.refresh_token
     }
-    # Revoke the refresh token by making a token exchange request
-    # This effectively logs out the user by invalidating their refresh token
     response = requests.post(url, json=payload)
     
-    # Even if the token is invalid/expired, we consider logout successful
-    # since the client will clear their local tokens anyway
     return {"message": "Logged out successfully"}
 
 @router.post("/google")
@@ -188,7 +235,6 @@ async def google_auth(request: GoogleAuthRequest):
         if firebase_response.status_code == 200:
             return firebase_response.json()
         elif firebase_response.status_code == 400 and "EMAIL_NOT_FOUND" in firebase_response.json().get("error", {}).get("message", ""):
-            # Create new user
             create_url = f"https://identitytoolkit.googleapis.com/v1/accounts:signUp?key={Config.FIREBASE_API_KEY}"
             create_payload = {
                 "email": email,

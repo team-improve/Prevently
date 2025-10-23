@@ -15,10 +15,8 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${inter.className} antialiased bg-gray-50 text-gray-900 flex flex-col min-h-screen`}
-      >
-        <Navbar />
-        <div className="pt-12 flex-1">{children}</div>
+        className={`${inter.className} antialiased bg-gray-50 text-gray-900 flex flex-col min-h-screen`}>
+        <div>{children}</div>
       </body>
     </html>
   );
