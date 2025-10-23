@@ -64,13 +64,13 @@ const getUserFriendlyErrorMessage = (errorCode: string): string => {
 };
 
 export const authApi = {
-  async register(email: string, password: string): Promise<AuthResponse> {
+  async register(email: string, password: string, username: string): Promise<AuthResponse> {
     const response = await fetch(`${API_BASE_URL}/auth/register`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ email, password }),
+      body: JSON.stringify({ email, password, username }),
     });
 
     if (!response.ok) {
@@ -87,13 +87,13 @@ export const authApi = {
     return response.json();
   },
 
-  async login(email: string, password: string): Promise<AuthResponse> {
+  async login(emailOrUsername: string, password: string): Promise<AuthResponse> {
     const response = await fetch(`${API_BASE_URL}/auth/login`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ email, password }),
+      body: JSON.stringify({ email_or_username: emailOrUsername, password }),
     });
 
     if (!response.ok) {
@@ -102,7 +102,7 @@ export const authApi = {
 
       if (response.status === 403 && errorData.detail) {
         throw new ApiError(
-          errorData.detail,
+          errorData.detail.error?.message || JSON.stringify(errorData.detail),
           response.status,
           errorData
         );

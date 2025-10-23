@@ -5,7 +5,6 @@ export interface EmailValidationResult {
   isValid: boolean | null;
   inputClassName: string;
   errorMessage: string | null;
-  successMessage: string | null;
 }
 
 export const useEmailValidation = (initialEmail: string = '') => {
@@ -34,7 +33,6 @@ export const useEmailValidation = (initialEmail: string = '') => {
   }`;
 
   const errorMessage = email && isValid === false ? 'Please enter a valid email address' : null;
-  const successMessage = email && isValid === true ? 'Valid email format' : null;
 
   return {
     email,
@@ -42,7 +40,6 @@ export const useEmailValidation = (initialEmail: string = '') => {
     isValid,
     inputClassName,
     errorMessage,
-    successMessage,
     validateEmail: () => validateEmail(email),
   };
 };
