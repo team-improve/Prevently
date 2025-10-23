@@ -4,9 +4,11 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const navItems = [
-  { href: "/", label: "Home" },
-  { href: "/dashboard", label: "Dashboard" },
-  { href: "/companies", label: "Companies" },
+  { href: "/dashboard/news", label: "News" },
+  { href: "/dashboard/topics", label: "Topics" },
+  { href: "/dashboard/companies", label: "Companies" },
+  { href: "/dashboard/account", label: "Account" },
+  //{ href: "/", label: "Sign Out" },
 ];
 
 export default function Navbar() {
