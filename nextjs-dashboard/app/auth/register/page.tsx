@@ -102,7 +102,7 @@ function RegisterContent() {
           setErrors([error.message]);
         } else {
           setErrors(['An unexpected error occurred']);
-        }
+        } 
       } finally {
         setIsLoading(false);
       }

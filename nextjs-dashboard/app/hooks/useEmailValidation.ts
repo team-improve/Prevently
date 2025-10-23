@@ -29,7 +29,7 @@ export const useEmailValidation = (initialEmail: string = '') => {
       ? 'border-red-300 focus:ring-red-500 focus:border-red-500'
       : email && isValid === true
       ? 'border-green-300 focus:ring-green-500 focus:border-green-500'
-      : 'border-gray-300 focus:ring-blue-500 focus:border-transparent'
+      : 'border-gray-300 focus:ring-blue-500 focus:border-blue-500'
   }`;
 
   const errorMessage = email && isValid === false ? 'Please enter a valid email address' : null;

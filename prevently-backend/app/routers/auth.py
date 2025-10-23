@@ -32,7 +32,6 @@ async def get_email_from_username(username: str) -> Optional[str]:
             return doc.to_dict().get('email')
         return None
     except Exception as e:
-        print(f"Error getting email from username: {e}")
         return None
 
 async def save_username_mapping(username: str, email: str):
@@ -44,7 +43,6 @@ async def save_username_mapping(username: str, email: str):
             'created_at': firestore.SERVER_TIMESTAMP
         })
     except Exception as e:
-        print(f"Error saving username mapping: {e}")
         raise HTTPException(status_code=500, detail="Failed to save user data")
 
 class RegisterRequest(BaseModel):
@@ -165,7 +163,6 @@ async def login_user(request: LoginRequest):
         raise HTTPException(status_code=response.status_code, detail=response.json())
     
     user_data = response.json()
-    print(f"Login - emailVerified in response: {user_data.get('emailVerified', 'NOT_PRESENT')}")  # Debug log
     
     if not user_data.get("emailVerified", False):
         info_url = f"https://identitytoolkit.googleapis.com/v1/accounts:lookup?key={Config.FIREBASE_API_KEY}"
@@ -178,7 +175,6 @@ async def login_user(request: LoginRequest):
             users = info_data.get("users", [])
             if users:
                 user_info = users[0]
-                print(f"Lookup - emailVerified: {user_info.get('emailVerified', 'NOT_PRESENT')}")  # Debug log
                 if user_info.get("emailVerified", False):
                     user_data["emailVerified"] = True
                 else:
@@ -255,3 +251,164 @@ async def google_auth(request: GoogleAuthRequest):
         raise HTTPException(status_code=400, detail=f"Invalid Google ID token: {str(e)}")
     except requests.RequestException as e:
         raise HTTPException(status_code=500, detail=f"Authentication service error: {str(e)}")
+
+@router.get("/domains")
+async def get_domains():
+    try:
+        domains_ref = db.collection('domains')
+        docs = domains_ref.stream()
+
+        domains = []
+        for doc in docs:
+            domain_data = doc.to_dict()
+            domains.append({
+                'id': doc.id,
+                'name': domain_data.get('name', ''),
+                'description': domain_data.get('description', '')
+            })
+
+        domains.sort(key=lambda x: x['name'])
+
+        return {"domains": domains}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail="Failed to retrieve domains")
+
+@router.get("/news/{domain}")
+async def get_news_by_domain(
+    domain: str,
+    page: int = 1,
+    limit: int = 20,
+    sentiment_filter: str = "all",
+    date_from: int = None,
+    date_to: int = None
+):
+    try:
+        page = max(page, 1)
+        limit = min(max(limit, 1), 50)
+        offset = (page - 1) * limit
+
+        query = db.collection('news_datastore').where('domain', '==', domain)
+
+        if date_from is not None and date_to is not None:
+            query = query.where('timestamp', '>=', date_from).where('timestamp', '<=', date_to)
+        elif date_from is not None:
+            query = query.where('timestamp', '>=', date_from)
+        elif date_to is not None:
+            query = query.where('timestamp', '<=', date_to)
+
+        docs = query.order_by('timestamp', direction=firestore.Query.DESCENDING).stream()
+
+        all_articles = []
+        for doc in docs:
+            article_data = doc.to_dict()
+            sentiment = article_data.get('sentiment_numeric', 0)
+
+            if sentiment_filter == "positive" and sentiment < 0.1:
+                continue
+            elif sentiment_filter == "neutral" and (sentiment <= -0.1 or sentiment >= 0.1):
+                continue
+            elif sentiment_filter == "negative" and sentiment > -0.1:
+                continue
+
+            all_articles.append({
+                'id': article_data.get('id', ''),
+                'title': article_data.get('title', ''),
+                'description': article_data.get('description', ''),
+                'domain': article_data.get('domain', ''),
+                'companies': article_data.get('companies', []),
+                'source': article_data.get('source', ''),
+                'source_url': article_data.get('source_url', ''),
+                'sentiment_numeric': sentiment,
+                'sentiment_result': article_data.get('sentiment_result', {}),
+                'sentiment_sublabel': article_data.get('sentiment_sublabel', ''),
+                'timestamp': article_data.get('timestamp', 0)
+            })
+
+        total_count = len(all_articles)
+        start_index = offset
+        end_index = start_index + limit
+        paginated_articles = all_articles[start_index:end_index]
+
+        total_pages = (total_count + limit - 1) // limit
+
+        return {
+            "articles": paginated_articles,
+            "pagination": {
+                "page": page,
+                "limit": limit,
+                "total_count": total_count,
+                "total_pages": total_pages,
+                "has_next": page < total_pages,
+                "has_prev": page > 1
+            }
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail="Failed to retrieve news articles")
+
+@router.get("/news/latest/{limit}")
+async def get_latest_news(limit: int = 20):
+    try:
+        limit = min(max(limit, 1), 50)
+
+        news_ref = db.collection('news_datastore').order_by('timestamp', direction=firestore.Query.DESCENDING).limit(limit)
+        docs = news_ref.stream()
+
+        articles = []
+        for doc in docs:
+            article_data = doc.to_dict()
+            articles.append({
+                'id': article_data.get('id', ''),
+                'title': article_data.get('title', ''),
+                'description': article_data.get('description', ''),
+                'domain': article_data.get('domain', ''),
+                'companies': article_data.get('companies', []),
+                'source': article_data.get('source', ''),
+                'source_url': article_data.get('source_url', ''),
+                'sentiment_numeric': article_data.get('sentiment_numeric', 0),
+                'sentiment_result': article_data.get('sentiment_result', {}),
+                'sentiment_sublabel': article_data.get('sentiment_sublabel', ''),
+                'timestamp': article_data.get('timestamp', 0)
+            })
+
+        return {"articles": articles}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail="Failed to retrieve latest news articles")
+
+@router.get("/analytics/sentiment")
+async def get_sentiment_analytics(days: int = 30, domain: str = None):
+    try:
+        import time
+        current_time = int(time.time() * 1000)
+        days_ago = current_time - (days * 24 * 60 * 60 * 1000)
+
+        query = db.collection('news_datastore').where('timestamp', '>=', days_ago)
+
+        if domain and domain != 'all':
+            query = query.where('domain', '==', domain)
+
+        docs = query.order_by('timestamp', direction=firestore.Query.DESCENDING).stream()
+
+        from collections import defaultdict
+        daily_sentiment = defaultdict(list)
+
+        for doc in docs:
+            article_data = doc.to_dict()
+            timestamp = article_data.get('timestamp', 0)
+            sentiment = article_data.get('sentiment_numeric', 0)
+
+            import datetime
+            date = datetime.datetime.fromtimestamp(timestamp / 1000).strftime('%Y-%m-%d')
+            daily_sentiment[date].append(sentiment)
+
+        analytics_data = []
+        for date, sentiments in sorted(daily_sentiment.items()):
+            avg_sentiment = sum(sentiments) / len(sentiments)
+            analytics_data.append({
+                'date': date,
+                'sentiment': round(avg_sentiment, 3),
+                'article_count': len(sentiments)
+            })
+
+        return {"analytics": analytics_data}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail="Failed to retrieve sentiment analytics")

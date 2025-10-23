@@ -26,7 +26,6 @@ export default function NewsPage() {
         const data = await api<NewsItem[]>("/news");
         setNews(data);
       } catch {
-        // fallback mock data
         setNews([
           {
             id: "1",
@@ -76,19 +75,18 @@ export default function NewsPage() {
     load();
   }, []);
 
-  // Smooth continuous scroll effect
   useEffect(() => {
     let animationFrame: number;
     const scrollContainer = scrollRef.current;
 
     const scroll = () => {
       if (scrollContainer) {
-        scrollContainer.scrollLeft += 0.5; // speed (pixels/frame)
+        scrollContainer.scrollLeft += 0.5;
         if (
           scrollContainer.scrollLeft >=
           scrollContainer.scrollWidth - scrollContainer.clientWidth
         ) {
-          scrollContainer.scrollLeft = 0; // loop back to start
+          scrollContainer.scrollLeft = 0;
         }
       }
       animationFrame = requestAnimationFrame(scroll);

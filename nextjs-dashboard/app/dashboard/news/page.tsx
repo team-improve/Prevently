@@ -26,7 +26,6 @@ export default function NewsPage() {
         const data = await api<NewsItem[]>("/news");
         setNews(data);
       } catch {
-        // fallback mock data
         setNews([
           {
             id: "1",
@@ -76,7 +75,6 @@ export default function NewsPage() {
     load();
   }, []);
 
-  // Slow infinite horizontal scroll
   useEffect(() => {
     const container = scrollRef.current;
     if (!container) return;
@@ -86,9 +84,9 @@ export default function NewsPage() {
 
     const scroll = () => {
       if (container) {
-        scrollPos += 0.2; // slower speed (pixels per frame)
+        scrollPos += 0.2;
         if (scrollPos >= container.scrollWidth / 2) {
-          scrollPos = 0; // reset halfway (infinite loop)
+          scrollPos = 0;
         }
         container.scrollLeft = scrollPos;
       }

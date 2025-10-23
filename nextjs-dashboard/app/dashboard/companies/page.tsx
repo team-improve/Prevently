@@ -19,14 +19,12 @@ export default function CompaniesPage() {
   const [query, setQuery] = useState("");
 
   useEffect(() => {
-    // temporary mock if backend not ready
     const load = async () => {
       setLoading(true);
       try {
         const data = await api<Company[]>("/companies");
         setCompanies(data);
       } catch {
-        // fallback mock data
         setCompanies([
           { id: "1", name: "Tesla", ticker: "TSLA", sentiment: 0.8, impact: 85 },
           { id: "2", name: "Apple", ticker: "AAPL", sentiment: 0.3, impact: 72 },

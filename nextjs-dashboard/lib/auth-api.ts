@@ -57,7 +57,7 @@ const getUserFriendlyErrorMessage = (errorCode: string): string => {
     'INVALID_EMAIL': 'The email address is not valid',
     'WEAK_PASSWORD': 'The password is too weak',
     'MISSING_PASSWORD': 'Password is required',
-    'INVALID_LOGIN_CREDENTIALS': 'Invalid email or password',
+    'INVALID_LOGIN_CREDENTIALS': 'Invalid email/username or password',
   };
 
   return errorMessages[errorCode] || `Authentication error: ${errorCode}`;
@@ -224,6 +224,154 @@ export const authApi = {
       const errorData: AuthError = await response.json();
       const error = errorData.detail?.error || errorData.error;
       const userFriendlyMessage = error?.message ? getUserFriendlyErrorMessage(error.message) : 'Logout failed';
+      throw new ApiError(
+        userFriendlyMessage,
+        error?.code || response.status,
+        error || errorData
+      );
+    }
+
+    return response.json();
+  },
+
+  async getDomains(): Promise<{ domains: Array<{ id: string; name: string; description: string }> }> {
+    const response = await fetch(`${API_BASE_URL}/auth/domains`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      const errorData: AuthError = await response.json();
+      const error = errorData.detail?.error || errorData.error;
+      const userFriendlyMessage = error?.message ? getUserFriendlyErrorMessage(error.message) : 'Failed to get domains';
+      throw new ApiError(
+        userFriendlyMessage,
+        error?.code || response.status,
+        error || errorData
+      );
+    }
+
+    return response.json();
+  },
+
+  async getNewsByDomain(domain: string, options?: {
+    page?: number;
+    limit?: number;
+    sentimentFilter?: 'all' | 'positive' | 'neutral' | 'negative';
+    dateFrom?: number;
+    dateTo?: number;
+  }): Promise<{
+    articles: Array<{
+      id: string;
+      title: string;
+      description: string;
+      domain: string;
+      companies: string[];
+      source: string;
+      source_url: string;
+      sentiment_numeric: number;
+      sentiment_result: any;
+      sentiment_sublabel: string;
+      timestamp: number;
+    }>;
+    pagination: {
+      page: number;
+      limit: number;
+      total_count: number;
+      total_pages: number;
+      has_next: boolean;
+      has_prev: boolean;
+    };
+  }> {
+    const params = new URLSearchParams();
+    if (options?.page) params.set('page', options.page.toString());
+    if (options?.limit) params.set('limit', options.limit.toString());
+    if (options?.sentimentFilter) params.set('sentiment_filter', options.sentimentFilter);
+    if (options?.dateFrom) params.set('date_from', options.dateFrom.toString());
+    if (options?.dateTo) params.set('date_to', options.dateTo.toString());
+
+    const url = params.toString()
+      ? `${API_BASE_URL}/auth/news/${domain}?${params}`
+      : `${API_BASE_URL}/auth/news/${domain}`;
+
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      const errorData: AuthError = await response.json();
+      const error = errorData.detail?.error || errorData.error;
+      const userFriendlyMessage = error?.message ? getUserFriendlyErrorMessage(error.message) : 'Failed to get news articles';
+      throw new ApiError(
+        userFriendlyMessage,
+        error?.code || response.status,
+        error || errorData
+      );
+    }
+
+    return response.json();
+  },
+
+  async getLatestNews(limit: number = 20): Promise<{ articles: Array<{
+    id: string;
+    title: string;
+    description: string;
+    domain: string;
+    companies: string[];
+    source: string;
+    source_url: string;
+    sentiment_numeric: number;
+    sentiment_result: any;
+    sentiment_sublabel: string;
+    timestamp: number;
+  }> }> {
+    const response = await fetch(`${API_BASE_URL}/auth/news/latest/${limit}`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      const errorData: AuthError = await response.json();
+      const error = errorData.detail?.error || errorData.error;
+      const userFriendlyMessage = error?.message ? getUserFriendlyErrorMessage(error.message) : 'Failed to get latest news';
+      throw new ApiError(
+        userFriendlyMessage,
+        error?.code || response.status,
+        error || errorData
+      );
+    }
+
+    return response.json();
+  },
+
+  async getSentimentAnalytics(days: number = 30, domain: string = 'all'): Promise<{ analytics: Array<{
+    date: string;
+    sentiment: number;
+    article_count: number;
+  }> }> {
+    const params = new URLSearchParams({
+      days: days.toString(),
+      domain: domain
+    });
+
+    const response = await fetch(`${API_BASE_URL}/auth/analytics/sentiment?${params}`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      const errorData: AuthError = await response.json();
+      const error = errorData.detail?.error || errorData.error;
+      const userFriendlyMessage = error?.message ? getUserFriendlyErrorMessage(error.message) : 'Failed to get sentiment analytics';
       throw new ApiError(
         userFriendlyMessage,
         error?.code || response.status,
