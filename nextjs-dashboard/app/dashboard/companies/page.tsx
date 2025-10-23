@@ -10,7 +10,6 @@ type Company = {
   sentiment: number;
   impact: number;
 };
-import SideNav from '@/app/ui/dashboard/sidenav';
  
 
 export default function CompaniesPage() {
@@ -45,6 +44,7 @@ export default function CompaniesPage() {
   return (
     
     <div className="p-6 max-w-4xl mx-auto">
+      
       <h1 className="text-2xl font-semibold mb-6">Companies</h1>
 
       <input

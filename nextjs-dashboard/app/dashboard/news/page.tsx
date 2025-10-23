@@ -110,10 +110,8 @@ export default function NewsPage() {
 
   return (
     <div className="flex">
-
       <div className="flex-1 h-screen overflow-hidden p-6 bg-gray-50">
         <h1 className="text-2xl font-semibold mb-6">Market News</h1>
-
         {loading ? (
           <div className="text-gray-500 animate-pulse">Loading latest news...</div>
         ) : (
