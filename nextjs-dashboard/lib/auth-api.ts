@@ -381,6 +381,139 @@ export const authApi = {
 
     return response.json();
   },
+
+  async getAdvancedAnalytics(filters: {
+    domains?: string[];
+    companies?: string[];
+    dateFrom?: number;
+    dateTo?: number;
+    sentimentFilter?: 'all' | 'positive' | 'neutral' | 'negative';
+  }): Promise<{
+    articles: Array<{
+      id: string;
+      title: string;
+      description: string;
+      domain: string;
+      companies: string[];
+      source: string;
+      source_url: string;
+      sentiment_numeric: number;
+      sentiment_result: any;
+      sentiment_sublabel: string;
+      timestamp: number;
+    }>;
+    analytics: {
+      domain_breakdown: Array<{
+        domain: string;
+        article_count: number;
+        avg_sentiment: number;
+        sentiment_distribution: {
+          positive: number;
+          neutral: number;
+          negative: number;
+        };
+      }>;
+      company_breakdown: Array<{
+        company: string;
+        mention_count: number;
+        avg_sentiment: number;
+      }>;
+      daily_trends: Array<{
+        date: string;
+        article_count: number;
+        avg_sentiment: number;
+        sentiment_distribution: {
+          positive: number;
+          neutral: number;
+          negative: number;
+        };
+      }>;
+      total_articles: number;
+      date_range: {
+        from: number | null;
+        to: number | null;
+      };
+      filters_applied: {
+        domains: string[];
+        companies: string[];
+        sentiment_filter: string;
+      };
+    };
+  }> {
+    const response = await fetch(`${API_BASE_URL}/auth/analytics/advanced`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        domains: filters.domains || [],
+        companies: filters.companies || [],
+        date_from: filters.dateFrom,
+        date_to: filters.dateTo,
+        sentiment_filter: filters.sentimentFilter || 'all'
+      }),
+    });
+
+    if (!response.ok) {
+      const errorData: AuthError = await response.json();
+      const error = errorData.detail?.error || errorData.error;
+      const userFriendlyMessage = error?.message ? getUserFriendlyErrorMessage(error.message) : 'Failed to get advanced analytics';
+      throw new ApiError(
+        userFriendlyMessage,
+        error?.code || response.status,
+        error || errorData
+      );
+    }
+
+    return response.json();
+  },
+
+  async getCompanies(): Promise<{ companies: string[] }> {
+    const response = await fetch(`${API_BASE_URL}/auth/companies`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      const errorData: AuthError = await response.json();
+      const error = errorData.detail?.error || errorData.error;
+      const userFriendlyMessage = error?.message ? getUserFriendlyErrorMessage(error.message) : 'Failed to get companies';
+      throw new ApiError(
+        userFriendlyMessage,
+        error?.code || response.status,
+        error || errorData
+      );
+    }
+
+    return response.json();
+  },
+
+  async generateQuery(request: {
+    prompt: string;
+  }): Promise<{ query: string; explanation: string }> {
+    const response = await fetch(`${API_BASE_URL}/api/generate-query`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(request),
+    });
+
+    if (!response.ok) {
+      const errorData: AuthError = await response.json();
+      const error = errorData.detail?.error || errorData.error;
+      const userFriendlyMessage = error?.message ? getUserFriendlyErrorMessage(error.message) : 'Failed to generate query';
+      throw new ApiError(
+        userFriendlyMessage,
+        error?.code || response.status,
+        error || errorData
+      );
+    }
+
+    return response.json();
+  },
 };
 
 export const authStorage = {

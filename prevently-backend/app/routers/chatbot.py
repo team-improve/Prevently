@@ -8,6 +8,7 @@ import firebase_admin
 from firebase_admin import credentials, firestore
 import time
 from collections import defaultdict
+import json
 
 router = APIRouter()
 
@@ -24,7 +25,6 @@ if not firebase_admin._apps:
 db = firestore.client()
 
 async def get_recent_news(limit: int = 5) -> str:
-    """Fetch recent news articles and format them for context"""
     try:
         news_ref = db.collection('news_datastore').order_by('timestamp', direction=firestore.Query.DESCENDING).limit(limit)
         docs = news_ref.stream()
@@ -56,7 +56,6 @@ async def get_recent_news(limit: int = 5) -> str:
         return f"Unable to fetch recent news: {str(e)}"
 
 async def get_sentiment_analytics_summary(days: int = 7) -> str:
-    """Fetch sentiment analytics summary for the last N days"""
     try:
         current_time = int(time.time() * 1000)
         days_ago = current_time - (days * 24 * 60 * 60 * 1000)
@@ -115,6 +114,13 @@ class ChatRequest(BaseModel):
 class ChatResponse(BaseModel):
     response: str
 
+class QueryGenerationRequest(BaseModel):
+    prompt: str
+
+class QueryGenerationResponse(BaseModel):
+    query: str
+    explanation: str
+
 def get_anthropic_client():
     if not Config.ANTHROPIC_API_KEY:
         raise HTTPException(status_code=500, detail="Anthropic API key not configured")
@@ -122,9 +128,6 @@ def get_anthropic_client():
 
 @router.post("/chat", response_model=ChatResponse)
 async def chat_with_ai(request: ChatRequest):
-    """
-    Chat with Claude AI assistant
-    """
     try:
         client = get_anthropic_client()
 
@@ -181,6 +184,48 @@ async def chat_with_ai(request: ChatRequest):
 
         return ChatResponse(response=response.content[0].text)
 
+    except anthropic.APIError as e:
+        raise HTTPException(status_code=500, detail=f"AI service error: {str(e)}")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+
+@router.post("/generate-query", response_model=QueryGenerationResponse)
+async def generate_query(request: QueryGenerationRequest):
+    try:
+        client = get_anthropic_client()
+
+        prompt_file = os.path.join(os.path.dirname(__file__), '..', 'prompts', 'query_generation_prompt.txt')
+        try:
+            with open(prompt_file, 'r', encoding='utf-8') as f:
+                system_prompt = f.read()
+        except FileNotFoundError:
+            raise HTTPException(status_code=500, detail="Query generation prompt file not found")
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Error loading query generation prompt: {str(e)}")
+
+        response = client.messages.create(
+            model="claude-3-5-haiku-20241022",
+            max_tokens=512,
+            temperature=0.3,
+            system=system_prompt,
+            messages=[
+                {
+                    "role": "user",
+                    "content": request.prompt
+                }
+            ]
+        )
+
+        import json
+        result = json.loads(response.content[0].text.strip())
+        
+        return QueryGenerationResponse(
+            query=result.get("query", ""),
+            explanation=result.get("explanation", "")
+        )
+
+    except json.JSONDecodeError:
+        raise HTTPException(status_code=500, detail="Failed to parse AI response")
     except anthropic.APIError as e:
         raise HTTPException(status_code=500, detail=f"AI service error: {str(e)}")
     except Exception as e:

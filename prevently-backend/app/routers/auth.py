@@ -9,6 +9,7 @@ from google.auth.transport import requests as google_requests
 import firebase_admin
 from firebase_admin import credentials, firestore
 import os
+from collections import defaultdict
 
 router = APIRouter()
 
@@ -412,3 +413,169 @@ async def get_sentiment_analytics(days: int = 30, domain: str = None):
         return {"analytics": analytics_data}
     except Exception as e:
         raise HTTPException(status_code=500, detail="Failed to retrieve sentiment analytics")
+
+@router.post("/analytics/advanced")
+async def get_advanced_analytics(request: dict):
+    try:
+        domains = request.get('domains', [])
+        companies = request.get('companies', [])
+        date_from = request.get('date_from')
+        date_to = request.get('date_to')
+        sentiment_filter = request.get('sentiment_filter', 'all')
+
+        query = db.collection('news_datastore').order_by('timestamp', direction=firestore.Query.DESCENDING).limit(1000)
+        docs = query.stream()
+
+        articles = []
+        domain_stats = defaultdict(lambda: {'count': 0, 'sentiment_sum': 0, 'sentiments': []})
+        company_stats = defaultdict(lambda: {'count': 0, 'sentiment_sum': 0})
+        daily_stats = defaultdict(lambda: {'count': 0, 'sentiment_sum': 0, 'sentiments': []})
+
+        for doc in docs:
+            article_data = doc.to_dict()
+            sentiment = article_data.get('sentiment_numeric', 0)
+            domain = article_data.get('domain', '')
+            companies_raw = article_data.get('companies', [])
+            
+            if isinstance(companies_raw, str):
+                article_companies = [c.strip() for c in companies_raw.replace(',', ';').split(';') if c.strip() and len(c.strip()) > 1]
+            elif isinstance(companies_raw, list):
+                article_companies = companies_raw
+            else:
+                article_companies = []
+                
+            timestamp = article_data.get('timestamp', 0)
+
+            if domains and domain not in domains:
+                continue
+
+            if date_from is not None and timestamp < date_from:
+                continue
+            if date_to is not None and timestamp > date_to:
+                continue
+
+            if sentiment_filter == "positive" and sentiment < 0.1:
+                continue
+            elif sentiment_filter == "neutral" and (sentiment <= -0.1 or sentiment >= 0.1):
+                continue
+            elif sentiment_filter == "negative" and sentiment > -0.1:
+                continue
+
+            if companies and not any(company in article_companies for company in companies):
+                continue
+
+            articles.append({
+                'id': article_data.get('id', ''),
+                'title': article_data.get('title', ''),
+                'description': article_data.get('description', ''),
+                'domain': domain,
+                'companies': article_companies,
+                'source': article_data.get('source', ''),
+                'source_url': article_data.get('source_url', ''),
+                'sentiment_numeric': sentiment,
+                'sentiment_result': article_data.get('sentiment_result', {}),
+                'sentiment_sublabel': article_data.get('sentiment_sublabel', ''),
+                'timestamp': timestamp
+            })
+
+            domain_stats[domain]['count'] += 1
+            domain_stats[domain]['sentiment_sum'] += sentiment
+            domain_stats[domain]['sentiments'].append(sentiment)
+
+            for company in article_companies:
+                company_stats[company]['count'] += 1
+                company_stats[company]['sentiment_sum'] += sentiment
+
+            import datetime
+            date = datetime.datetime.fromtimestamp(timestamp / 1000).strftime('%Y-%m-%d')
+            daily_stats[date]['count'] += 1
+            daily_stats[date]['sentiment_sum'] += sentiment
+            daily_stats[date]['sentiments'].append(sentiment)
+
+        domain_analytics = []
+        for domain, stats in domain_stats.items():
+            if stats['count'] > 0:
+                avg_sentiment = stats['sentiment_sum'] / stats['count']
+                domain_analytics.append({
+                    'domain': domain,
+                    'article_count': stats['count'],
+                    'avg_sentiment': round(avg_sentiment, 3),
+                    'sentiment_distribution': {
+                        'positive': len([s for s in stats['sentiments'] if s >= 0.1]),
+                        'neutral': len([s for s in stats['sentiments'] if -0.1 < s < 0.1]),
+                        'negative': len([s for s in stats['sentiments'] if s <= -0.1])
+                    }
+                })
+
+        company_analytics = []
+        for company, stats in company_stats.items():
+            if stats['count'] > 0:
+                avg_sentiment = stats['sentiment_sum'] / stats['count']
+                company_analytics.append({
+                    'company': company,
+                    'mention_count': stats['count'],
+                    'avg_sentiment': round(avg_sentiment, 3)
+                })
+
+        daily_analytics = []
+        for date, stats in sorted(daily_stats.items()):
+            if stats['count'] > 0:
+                avg_sentiment = stats['sentiment_sum'] / stats['count']
+                daily_analytics.append({
+                    'date': date,
+                    'article_count': stats['count'],
+                    'avg_sentiment': round(avg_sentiment, 3),
+                    'sentiment_distribution': {
+                        'positive': len([s for s in stats['sentiments'] if s >= 0.1]),
+                        'neutral': len([s for s in stats['sentiments'] if -0.1 < s < 0.1]),
+                        'negative': len([s for s in stats['sentiments'] if s <= -0.1])
+                    }
+                })
+
+        return {
+            "articles": articles[:100],
+            "analytics": {
+                "domain_breakdown": domain_analytics,
+                "company_breakdown": company_analytics[:20],
+                "daily_trends": daily_analytics,
+                "total_articles": len(articles),
+                "date_range": {
+                    "from": date_from,
+                    "to": date_to
+                },
+                "filters_applied": {
+                    "domains": domains,
+                    "companies": companies,
+                    "sentiment_filter": sentiment_filter
+                }
+            }
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to retrieve advanced analytics: {str(e)}")
+
+@router.get("/companies")
+async def get_companies():
+    try:
+        docs = db.collection('news_datastore').stream()
+
+        companies_set = set()
+        for doc in docs:
+            article_data = doc.to_dict()
+            companies = article_data.get('companies', [])
+            
+            if isinstance(companies, str):
+                companies = [c.strip() for c in companies.replace(',', ';').split(';') if c.strip()]
+            elif isinstance(companies, list):
+                pass
+            else:
+                continue
+            
+            for company in companies:
+                if company and len(company.strip()) > 1:
+                    companies_set.add(company.strip())
+
+        companies_list = sorted(list(companies_set))
+
+        return {"companies": companies_list}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail="Failed to retrieve companies")

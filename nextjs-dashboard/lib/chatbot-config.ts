@@ -6,7 +6,6 @@ export const getActiveFiltersFromUrl = (): string => {
   const urlParams = new URLSearchParams(window.location.search);
   const filters: string[] = [];
 
-  // Extract common filter parameters
   if (urlParams.has('sentiment_filter') && urlParams.get('sentiment_filter') !== 'all') {
     filters.push(`sentiment_filter=${urlParams.get('sentiment_filter')}`);
   }
