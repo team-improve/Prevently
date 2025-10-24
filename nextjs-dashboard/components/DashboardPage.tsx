@@ -18,7 +18,11 @@ interface NewsArticle {
   id: string;
   title: string;
   description: string;
-  domain: string;
+  domain: {
+    id: string;
+    name: string;
+    description: string;
+  };
   companies: string[];
   source: string;
   source_url: string;
@@ -42,27 +46,6 @@ function decodeJWT(token: string) {
   }
 }
 
-const newsItems = [
-  {
-    id: 1,
-    title: "Market Analysis: Q4 Economic Outlook",
-    excerpt: "Latest insights on market trends and economic indicators...",
-    date: "2025-01-15"
-  },
-  {
-    id: 2,
-    title: "Healthcare Sector Shows Strong Growth",
-    excerpt: "Healthcare companies report record earnings this quarter...",
-    date: "2025-01-14"
-  },
-  {
-    id: 3,
-    title: "Technology Stocks Rally on AI Developments",
-    excerpt: "Major tech companies announce breakthrough AI technologies...",
-    date: "2025-01-13"
-  }
-];
-
 export default function DashboardPage({ onLogout }: DashboardPageProps) {
   const [username, setUsername] = useState<string>('');
   const [currentNewsIndex, setCurrentNewsIndex] = useState(0);
@@ -70,6 +53,7 @@ export default function DashboardPage({ onLogout }: DashboardPageProps) {
   const [latestNews, setLatestNews] = useState<NewsArticle[]>([]);
   const [loading, setLoading] = useState(true);
   const [newsLoading, setNewsLoading] = useState(true);
+  const [isNewsSidebarOpen, setIsNewsSidebarOpen] = useState(false);
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -125,8 +109,9 @@ export default function DashboardPage({ onLogout }: DashboardPageProps) {
     return () => clearInterval(interval);
   }, [latestNews.length]);
 
-  const handleDomainClick = (domainId: string) => {
-    router.push(`/news/${domainId}`);
+  const handleDomainClick = (domain: Domain) => {
+    const urlSafeName = domain.name.replace(/\s+/g, '-');
+    router.push(`/news/${urlSafeName}`);
   };
 
   const formatTimestamp = (timestamp: number) => {
@@ -220,7 +205,7 @@ export default function DashboardPage({ onLogout }: DashboardPageProps) {
                         {latestNews[currentNewsIndex]?.sentiment_sublabel || 'Neutral'}
                       </span>
                       <span className="text-xs text-blue-600 bg-blue-100 px-2 py-1 rounded-full">
-                        {latestNews[currentNewsIndex]?.domain || ''}
+                        {latestNews[currentNewsIndex]?.domain.name || ''}
                       </span>
                     </div>
                   </div>
@@ -266,27 +251,6 @@ export default function DashboardPage({ onLogout }: DashboardPageProps) {
           <SentimentAnalytics domains={domains} />
         </div>
 
-        {/* News Sidepanel Section */}
-        <div className="mb-12 bg-white rounded-xl shadow-lg p-6">
-          <div className="flex items-center justify-between">
-            <div className="flex-1">
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">News Analysis Panel</h3>
-              <p className="text-gray-600">
-                Access detailed news analysis and insights across all sectors.
-                Open the news sidepanel to explore comprehensive market intelligence.
-              </p>
-            </div>
-            <div className="ml-6">
-              <button className="bg-blue-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-blue-700 transition-all duration-200 flex items-center space-x-2">
-                <span>Open News Panel</span>
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                </svg>
-              </button>
-            </div>
-          </div>
-        </div>
-
         {/* Domain Cards */}
         <div>
           <h2 className="text-2xl font-bold text-gray-900 mb-6 text-center">Explore News by Sector</h2>
@@ -300,7 +264,7 @@ export default function DashboardPage({ onLogout }: DashboardPageProps) {
               {domains.map((domain) => (
                 <div
                   key={domain.id}
-                  onClick={() => handleDomainClick(domain.id)}
+                  onClick={() => handleDomainClick(domain)}
                   className="bg-white rounded-xl shadow-lg p-6 cursor-pointer hover:shadow-xl hover:scale-105 transition-all duration-200 border border-gray-100"
                 >
                   <div className="flex items-center justify-between mb-4">
