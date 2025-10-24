@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef } from "react";
 import { api } from "@/app/lib/api";
-import SideNav from "@/app/ui/dashboard/sidenav";
+import SideBar from "@/app/ui/dashboard/sidebar";
 
 type NewsItem = {
   id: string;

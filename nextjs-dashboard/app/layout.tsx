@@ -2,6 +2,7 @@ import "@/app/ui/global.css";
 import { inter } from "@/app/ui/fonts";
 import ProfileDropdown from "@/components/ProfileDropdown";
 import Chatbot from "@/components/Chatbot";
+import Navbar from "./ui/NavBar";
 
 export const metadata = {
   title: "Prevently Dashboard",
