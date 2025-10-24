@@ -7,7 +7,7 @@ import { authStorage } from '@/lib/auth-api';
 interface ProfileDropdownProps {
   username?: string;
   onLogout?: () => void;
-  inline?: boolean; // Whether to render inline (for headers) or as floating element
+  inline?: boolean;
 }
 
 export default function ProfileDropdown({ username: propUsername, onLogout: propOnLogout, inline = false }: ProfileDropdownProps) {
@@ -19,14 +19,11 @@ export default function ProfileDropdown({ username: propUsername, onLogout: prop
   const router = useRouter();
   const pathname = usePathname();
 
-  // Check if we're on a news page (which has its own integrated profile dropdown)
   const isOnNewsPage = pathname?.startsWith('/news/');
 
   useEffect(() => {
-    // Mark that we're on the client
     setIsClient(true);
 
-    // Check authentication on client side
     const authenticated = authStorage.isAuthenticated();
     setIsAuthenticated(authenticated);
 
@@ -70,7 +67,6 @@ export default function ProfileDropdown({ username: propUsername, onLogout: prop
     if (propOnLogout) {
       propOnLogout();
     } else {
-      // Default logout behavior
       authStorage.removeToken();
       setIsAuthenticated(false);
       router.push('/');
@@ -78,7 +74,6 @@ export default function ProfileDropdown({ username: propUsername, onLogout: prop
     setIsOpen(false);
   };
 
-  // Don't render until we've determined client state, or if we're on news pages and not inline (handled in header)
   if (!isClient || !isAuthenticated || (isOnNewsPage && !inline)) {
     return null;
   }

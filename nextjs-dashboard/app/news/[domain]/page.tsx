@@ -14,6 +14,20 @@ interface Domain {
   description: string;
 }
 
+interface NewsArticle {
+  id: string;
+  title: string;
+  description: string;
+  domain: string;
+  companies: string[] | string;
+  source: string;
+  source_url: string;
+  sentiment_numeric: number;
+  sentiment_result: any;
+  sentiment_sublabel: string;
+  timestamp: number;
+}
+
 function decodeJWT(token: string) {
   try {
     const base64Url = token.split('.')[1];
@@ -305,9 +319,9 @@ export default function NewsDomainPage() {
           </div>
         </div>
 
-        {/* Sentiment Analytics */}
+        {/* Sentiment Analytics - Simplified View */}
         <div className="mb-6">
-          <SentimentAnalytics domains={domains} fixedDomain={domain} />
+          <SentimentAnalytics domains={domains} fixedDomain={domain} simplified={true} />
         </div>
 
         {/* Results Summary */}
