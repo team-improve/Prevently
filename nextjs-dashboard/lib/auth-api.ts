@@ -267,7 +267,11 @@ export const authApi = {
       id: string;
       title: string;
       description: string;
-      domain: string;
+      domain: {
+        id: string;
+        name: string;
+        description: string;
+      };
       companies: string[];
       source: string;
       source_url: string;
@@ -321,7 +325,11 @@ export const authApi = {
     id: string;
     title: string;
     description: string;
-    domain: string;
+    domain: {
+      id: string;
+      name: string;
+      description: string;
+    };
     companies: string[];
     source: string;
     source_url: string;
@@ -349,6 +357,26 @@ export const authApi = {
     }
 
     return response.json();
+  },
+
+  async getAllNews(limit: number = 200): Promise<{ articles: Array<{
+    id: string;
+    title: string;
+    description: string;
+    domain: {
+      id: string;
+      name: string;
+      description: string;
+    };
+    companies: string[];
+    source: string;
+    source_url: string;
+    sentiment_numeric: number;
+    sentiment_result: any;
+    sentiment_sublabel: string;
+    timestamp: number;
+  }> }> {
+    return this.getLatestNews(limit);
   },
 
   async getSentimentAnalytics(days: number = 30, domain: string = 'all'): Promise<{ analytics: Array<{
@@ -393,7 +421,11 @@ export const authApi = {
       id: string;
       title: string;
       description: string;
-      domain: string;
+      domain: {
+        id: string;
+        name: string;
+        description: string;
+      };
       companies: string[];
       source: string;
       source_url: string;

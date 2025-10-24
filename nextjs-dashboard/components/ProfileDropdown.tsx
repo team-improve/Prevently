@@ -19,7 +19,7 @@ export default function ProfileDropdown({ username: propUsername, onLogout: prop
   const router = useRouter();
   const pathname = usePathname();
 
-  const isOnNewsPage = pathname?.startsWith('/news/');
+  const isOnMainNewsPage = pathname === '/news';
 
   useEffect(() => {
     setIsClient(true);
@@ -74,7 +74,7 @@ export default function ProfileDropdown({ username: propUsername, onLogout: prop
     setIsOpen(false);
   };
 
-  if (!isClient || !isAuthenticated || (isOnNewsPage && !inline)) {
+  if (!isClient || !isAuthenticated || (isOnMainNewsPage && !inline)) {
     return null;
   }
 
@@ -123,7 +123,7 @@ export default function ProfileDropdown({ username: propUsername, onLogout: prop
           </button>
 
           <button
-            onClick={() => handleNavigation('/dashboard/news')}
+            onClick={() => handleNavigation('/news')}
             className="w-full text-left px-3 md:px-4 py-2 text-xs md:text-sm text-gray-700 hover:bg-gray-50 transition-colors duration-150 flex items-center space-x-2"
           >
             <svg className="w-3 h-3 md:w-4 md:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

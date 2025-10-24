@@ -404,13 +404,20 @@ function SentimentAnalytics({ domains, fixedDomain, simplified = false }: Sentim
   const renderSentimentDistribution = () => {
     if (!analyticsData?.analytics.domain_breakdown) return null;
 
-    const data = analyticsData.analytics.domain_breakdown.flatMap(domain =>
-      [
-        { name: `${domain.domain} - Positive`, value: domain.sentiment_distribution.positive, color: '#10B981' },
-        { name: `${domain.domain} - Neutral`, value: domain.sentiment_distribution.neutral, color: '#6B7280' },
-        { name: `${domain.domain} - Negative`, value: domain.sentiment_distribution.negative, color: '#EF4444' }
-      ]
+    const totalDistribution = analyticsData.analytics.domain_breakdown.reduce(
+      (acc, domain) => ({
+        positive: acc.positive + domain.sentiment_distribution.positive,
+        neutral: acc.neutral + domain.sentiment_distribution.neutral,
+        negative: acc.negative + domain.sentiment_distribution.negative,
+      }),
+      { positive: 0, neutral: 0, negative: 0 }
     );
+
+    const data = [
+      { name: 'Positive', value: totalDistribution.positive, color: '#10B981' },
+      { name: 'Neutral', value: totalDistribution.neutral, color: '#6B7280' },
+      { name: 'Negative', value: totalDistribution.negative, color: '#EF4444' }
+    ];
 
     return (
       <ResponsiveContainer width="100%" height="100%">
@@ -420,7 +427,7 @@ function SentimentAnalytics({ domains, fixedDomain, simplified = false }: Sentim
             cx="50%"
             cy="50%"
             labelLine={false}
-            label={({ name, percent }) => `${name?.split(' - ')[1] || 'Unknown'} ${((percent as number) * 100).toFixed(0)}%`}
+            label={({ name, percent }) => `${name} ${((percent as number) * 100).toFixed(0)}%`}
             outerRadius={80}
             fill="#8884d8"
             dataKey="value"

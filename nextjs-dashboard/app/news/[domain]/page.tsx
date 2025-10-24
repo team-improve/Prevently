@@ -5,8 +5,9 @@ import { useRouter, useParams } from 'next/navigation';
 import { authStorage, authApi } from '@/lib/auth-api';
 import { lusitana } from '@/app/ui/fonts';
 import Dropdown from '@/components/Dropdown';
-import SentimentAnalytics from '@/components/SentimentAnalytics';
+import ArticleCard from '@/components/ArticleCard';
 import ProfileDropdown from '@/components/ProfileDropdown';
+import SentimentAnalytics from '@/components/SentimentAnalytics';
 
 interface Domain {
   id: string;
@@ -18,7 +19,11 @@ interface NewsArticle {
   id: string;
   title: string;
   description: string;
-  domain: string;
+  domain: {
+    id: string;
+    name: string;
+    description: string;
+  };
   companies: string[] | string;
   source: string;
   source_url: string;
@@ -73,11 +78,35 @@ export default function NewsDomainPage() {
   };
 
   const getDisplayDomainName = () => {
-    const matchingDomain = domains.find(d => d.id === domain);
-    if (matchingDomain) {
-      return matchingDomain.name;
+    const normalizedDomain = domain.replace(/-/g, ' ');
+
+    const matchingDomainByName = domains.find(d => d.name.toLowerCase() === normalizedDomain.toLowerCase());
+    if (matchingDomainByName) {
+      return matchingDomainByName.name;
     }
+
+    const matchingDomainById = domains.find(d => d.id === domain);
+    if (matchingDomainById) {
+      return matchingDomainById.name;
+    }
+
     return formatDomainName(domain);
+  };
+
+  const getDomainId = () => {
+    const normalizedDomain = domain.replace(/-/g, ' ');
+
+    const matchingDomainByName = domains.find(d => d.name.toLowerCase() === normalizedDomain.toLowerCase());
+    if (matchingDomainByName) {
+      return matchingDomainByName.id;
+    }
+
+    const matchingDomainById = domains.find(d => d.id === domain);
+    if (matchingDomainById) {
+      return matchingDomainById.id;
+    }
+
+    return domain;
   };
 
   const displayDomainName = getDisplayDomainName();
@@ -161,6 +190,8 @@ export default function NewsDomainPage() {
     const fetchArticles = async () => {
       try {
         setArticlesLoading(true);
+        const domainId = getDomainId();
+
         const options: any = {
           page: currentPage,
           limit: 20,
@@ -174,7 +205,7 @@ export default function NewsDomainPage() {
           options.dateTo = new Date(dateTo).getTime();
         }
 
-        const response = await authApi.getNewsByDomain(domain, options);
+        const response = await authApi.getNewsByDomain(domainId, options);
         setArticles(response.articles);
         setPagination(response.pagination);
       } catch (error) {
@@ -186,10 +217,10 @@ export default function NewsDomainPage() {
       }
     };
 
-    if (domain) {
+    if (domain && domains.length > 0) {
       fetchArticles();
     }
-  }, [domain, currentPage, sentimentFilter, dateFrom, dateTo]);
+  }, [domain, domains, currentPage, sentimentFilter, dateFrom, dateTo]);
 
   if (isLoading) {
     return (
@@ -240,7 +271,7 @@ export default function NewsDomainPage() {
 
             {/* Profile Dropdown in Header */}
             <div className="ml-6 flex-shrink-0">
-              <ProfileDropdown username={username} inline={true} />
+              <ProfileDropdown username={username} />
             </div>
           </div>
         </div>
@@ -320,8 +351,8 @@ export default function NewsDomainPage() {
         </div>
 
         {/* Sentiment Analytics - Simplified View */}
-        <div className="mb-6">
-          <SentimentAnalytics domains={domains} fixedDomain={domain} simplified={true} />
+        <div className="mb-6">  
+          <SentimentAnalytics domains={domains} fixedDomain={getDomainId()} simplified={true} />
         </div>
 
         {/* Results Summary */}
@@ -342,59 +373,15 @@ export default function NewsDomainPage() {
             <p className="text-gray-600 text-lg">No articles found for this sector.</p>
           </div>
         ) : (
-          <div className="space-y-6">
+          <div className="grid gap-6 mb-8">
             {articles.map((article) => (
-              <article
+              <ArticleCard
                 key={article.id}
-                className="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl transition-all duration-200"
-              >
-                {/* Sentiment Indicator */}
-                <div className="flex items-center justify-between mb-4">
-                  <div className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${getSentimentColor(article.sentiment_numeric)}`}>
-                    <span className="mr-2">{getSentimentIcon(article.sentiment_numeric)}</span>
-                    {article.sentiment_sublabel}
-                  </div>
-                  <span className="text-sm text-gray-500">
-                    {formatTimestamp(article.timestamp)}
-                  </span>
-                </div>
-
-                {/* Title and Description */}
-                <div className="mb-4">
-                  <h2 className="text-xl font-semibold text-gray-900 mb-2">
-                    {article.title}
-                  </h2>
-                  <p className="text-gray-600">
-                    {truncateDescription(article.description)}
-                  </p>
-                </div>
-
-                {/* Tags and Source */}
-                <div className="flex flex-wrap items-center gap-2">
-                  {/* Companies */}
-                  {parseCompanies(article.companies).map((company, index) => (
-                    <span
-                      key={index}
-                      className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800"
-                    >
-                      {company}
-                    </span>
-                  ))}
-
-                  {/* Source */}
-                  <a
-                    href={article.source_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 hover:bg-gray-200 transition-colors duration-200"
-                  >
-                    {article.source}
-                    <svg className="w-3 h-3 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                    </svg>
-                  </a>
-                </div>
-              </article>
+                article={article}
+                getCanonicalDomainName={(domain) => domain.name}
+                truncateDescription={truncateDescription}
+                parseCompanies={parseCompanies}
+              />
             ))}
           </div>
         )}

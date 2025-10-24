@@ -25,6 +25,30 @@ if not firebase_admin._apps:
 
 db = firestore.client()
 
+async def get_domain_by_id(domain_id: str) -> dict:
+    """Fetch domain information by ID"""
+    try:
+        doc_ref = db.collection('domains').document(domain_id)
+        doc = doc_ref.get()
+        if doc.exists:
+            domain_data = doc.to_dict()
+            return {
+                'id': doc.id,
+                'name': domain_data.get('name', ''),
+                'description': domain_data.get('description', '')
+            }
+        return {
+            'id': domain_id,
+            'name': domain_id,
+            'description': ''
+        }
+    except Exception as e:
+        return {
+            'id': domain_id,
+            'name': domain_id,
+            'description': ''
+        }
+
 async def get_email_from_username(username: str) -> Optional[str]:
     try:
         doc_ref = db.collection('usernames').document(username.lower())
@@ -311,11 +335,13 @@ async def get_news_by_domain(
             elif sentiment_filter == "negative" and sentiment > -0.1:
                 continue
 
+            domain_info = await get_domain_by_id(article_data.get('domain', ''))
+
             all_articles.append({
                 'id': article_data.get('id', ''),
                 'title': article_data.get('title', ''),
                 'description': article_data.get('description', ''),
-                'domain': article_data.get('domain', ''),
+                'domain': domain_info,
                 'companies': article_data.get('companies', []),
                 'source': article_data.get('source', ''),
                 'source_url': article_data.get('source_url', ''),
@@ -349,7 +375,7 @@ async def get_news_by_domain(
 @router.get("/news/latest/{limit}")
 async def get_latest_news(limit: int = 20):
     try:
-        limit = min(max(limit, 1), 50)
+        limit = min(max(limit, 1), 500)
 
         news_ref = db.collection('news_datastore').order_by('timestamp', direction=firestore.Query.DESCENDING).limit(limit)
         docs = news_ref.stream()
@@ -357,11 +383,14 @@ async def get_latest_news(limit: int = 20):
         articles = []
         for doc in docs:
             article_data = doc.to_dict()
+            
+            domain_info = await get_domain_by_id(article_data.get('domain', ''))
+            
             articles.append({
                 'id': article_data.get('id', ''),
                 'title': article_data.get('title', ''),
                 'description': article_data.get('description', ''),
-                'domain': article_data.get('domain', ''),
+                'domain': domain_info,
                 'companies': article_data.get('companies', []),
                 'source': article_data.get('source', ''),
                 'source_url': article_data.get('source_url', ''),
@@ -464,11 +493,13 @@ async def get_advanced_analytics(request: dict):
             if companies and not any(company in article_companies for company in companies):
                 continue
 
+            domain_info = await get_domain_by_id(domain)
+
             articles.append({
                 'id': article_data.get('id', ''),
                 'title': article_data.get('title', ''),
                 'description': article_data.get('description', ''),
-                'domain': domain,
+                'domain': domain_info,
                 'companies': article_companies,
                 'source': article_data.get('source', ''),
                 'source_url': article_data.get('source_url', ''),
