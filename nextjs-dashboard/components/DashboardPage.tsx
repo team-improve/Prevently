@@ -171,24 +171,8 @@ export default function DashboardPage({ onLogout }: DashboardPageProps) {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
-      {/* Dashboard Navigation */}
-      <nav className="flex items-center justify-between p-6 lg:px-8">
-        <div className="flex items-center">
-          <h1 className={`${lusitana.className} text-2xl font-bold text-gray-900`}>Prevently</h1>
-        </div>
-        <div className="flex items-center space-x-4">
-          <span className="text-gray-600">Welcome back{username ? `, ${username}` : ''}!</span>
-          <button
-            onClick={onLogout}
-            className="bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-red-700 transition-all duration-200"
-          >
-            Logout
-          </button>
-        </div>
-      </nav>
-
       {/* Dashboard Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-16">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-16">
         <div className="text-center mb-12">
           <h1 className="text-4xl md:text-6xl font-bold text-gray-900 mb-6">
             Your Economic Intelligence

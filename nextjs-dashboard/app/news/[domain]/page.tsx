@@ -6,6 +6,7 @@ import { authStorage, authApi } from '@/lib/auth-api';
 import { lusitana } from '@/app/ui/fonts';
 import Dropdown from '@/components/Dropdown';
 import SentimentAnalytics from '@/components/SentimentAnalytics';
+import ProfileDropdown from '@/components/ProfileDropdown';
 
 interface Domain {
   id: string;
@@ -189,55 +190,50 @@ export default function NewsDomainPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
-      {/* Navigation */}
-      <nav className="flex items-center justify-between p-6 lg:px-8">
-        <div className="flex items-center">
-          <h1 className={`${lusitana.className} text-2xl font-bold text-gray-900`}>Prevently</h1>
-        </div>
-        <div className="flex items-center space-x-4">
-          <span className="text-gray-600">Welcome back{username ? `, ${username}` : ''}!</span>
-          <button
-            onClick={() => {
-              authStorage.removeToken();
-              router.push('/auth/login');
-            }}
-            className="bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-red-700 transition-all duration-200"
-          >
-            Logout
-          </button>
-        </div>
-      </nav>
+      {/* Sticky Header */}
+      <div className="sticky top-0 z-50 bg-white/95 backdrop-blur-sm border-b border-gray-200 shadow-sm">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex-1">
+              {/* Breadcrumb */}
+              <nav className="flex items-center space-x-2 text-sm text-gray-600 mb-4">
+                <button
+                  onClick={() => router.push('/dashboard')}
+                  className="hover:text-blue-600 transition-colors duration-200"
+                >
+                  Dashboard
+                </button>
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+                <span className="text-gray-900 font-medium">News</span>
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+                <span className="text-blue-600 font-medium">{displayDomainName}</span>
+              </nav>
 
-      {/* Breadcrumb */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4">
-        <nav className="flex items-center space-x-2 text-sm text-gray-600 mb-6">
-          <button
-            onClick={() => router.push('/dashboard')}
-            className="hover:text-blue-600 transition-colors duration-200"
-          >
-            Dashboard
-          </button>
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-          </svg>
-          <span className="text-gray-900 font-medium">News</span>
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-          </svg>
-          <span className="text-blue-600 font-medium">{displayDomainName}</span>
-        </nav>
+              {/* Title */}
+              <div>
+                <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-2">
+                  {displayDomainName} News & Analysis
+                </h1>
+                <p className="text-gray-600 text-lg">
+                  Stay informed with the latest developments and insights in the {displayDomainName.toLowerCase()} sector.
+                </p>
+              </div>
+            </div>
+
+            {/* Profile Dropdown in Header */}
+            <div className="ml-6 flex-shrink-0">
+              <ProfileDropdown username={username} inline={true} />
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-16">
-        <div className="mb-8">
-          <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-2">
-            {displayDomainName} News & Analysis
-          </h1>
-          <p className="text-gray-600 text-lg">
-            Stay informed with the latest developments and insights in the {displayDomainName.toLowerCase()} sector.
-          </p>
-        </div>
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pb-16">
 
         {/* Filters */}
         <div className="bg-white rounded-xl shadow-lg p-6 mb-6">

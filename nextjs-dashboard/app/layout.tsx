@@ -1,6 +1,7 @@
 import "@/app/ui/global.css";
 import { inter } from "@/app/ui/fonts";
-import Navbar from "@/app/ui/NavBar";
+import ProfileDropdown from "@/components/ProfileDropdown";
+import Chatbot from "@/components/Chatbot";
 
 export const metadata = {
   title: "Prevently Dashboard",
@@ -16,6 +17,8 @@ export default function RootLayout({
     <html lang="en">
       <body
         className={`${inter.className} antialiased bg-gray-50 text-gray-900 flex flex-col min-h-screen`}>
+        <ProfileDropdown />
+        <Chatbot />
         <div>{children}</div>
       </body>
     </html>
